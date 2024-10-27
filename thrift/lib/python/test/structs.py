@@ -21,7 +21,7 @@ import copy
 import math
 import types
 import unittest
-from typing import Type
+from typing import Type, TypeVar
 from unittest import mock
 
 import testing.thrift_mutable_types as mutable_test_types
@@ -61,9 +61,23 @@ from testing.thrift_types import (
     StructuredAnnotation,
     UnusedError,
 )
-from thrift.python.mutable_types import _isset as mutable_isset
+from thrift.python.mutable_types import (
+    _isset as mutable_isset,
+    _ThriftListWrapper,
+    _ThriftMapWrapper,
+    _ThriftSetWrapper,
+    to_thrift_list,
+    to_thrift_map,
+    to_thrift_set,
+)
+
 from thrift.python.serializer import deserialize, serialize_iobuf
 from thrift.python.types import isset, update_nested_field
+
+ListT = TypeVar("ListT")
+SetT = TypeVar("SetT")
+MapKey = TypeVar("MapKey")
+MapValue = TypeVar("MapValue")
 
 
 @parameterized_class(
@@ -106,6 +120,9 @@ class StructTestsParameterized(unittest.TestCase):
         # pyre-ignore[16]: has no attribute `serializer_module`
         self.serializer: types.ModuleType = self.serializer_module
         self.isset = mutable_isset if self.is_mutable_run else isset
+
+    def to_list(self, list_data: list[ListT]) -> list[ListT] | _ThriftListWrapper:
+        return to_thrift_list(list_data) if self.is_mutable_run else list_data
 
     def test_isset_Struct(self) -> None:
         to_serialize = self.OptionalFile(name="/dev/null", type=8)
@@ -152,8 +169,10 @@ class StructTestsParameterized(unittest.TestCase):
         self.easy(val=5, an_int=None)
 
     def test_call_replace_container(self) -> None:
-        x = self.Optionals(values=["a", "b", "c"])
-        z = x(values=["b", "c"])
+        # pyre-ignore[6]: TODO: Thrift-Container init
+        x = self.Optionals(values=self.to_list(["a", "b", "c"]))
+        # pyre-ignore[6]: TODO: Thrift-Container init
+        z = x(values=self.to_list(["b", "c"]))
         y = z(values=None)
         self.assertIsNone(y.values)
 
@@ -193,7 +212,10 @@ class StructTestsParameterized(unittest.TestCase):
 
     def test_ordering(self) -> None:
         x = self.Runtime(
-            bool_val=False, enum_val=self.Color.red, int_list_val=[64, 128]
+            bool_val=False,
+            enum_val=self.Color.red,
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            int_list_val=self.to_list([64, 128]),
         )
         y = x(bool_val=True)
         self.assertLess(x, y)
@@ -333,7 +355,11 @@ class StructTestsParameterized(unittest.TestCase):
 
     def test_copy(self) -> None:
         x = self.easy(
-            val=1, an_int=self.Integers(small=300), name="foo", val_list=[1, 2, 3, 4]
+            val=1,
+            an_int=self.Integers(small=300),
+            name="foo",
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            val_list=self.to_list([1, 2, 3, 4]),
         )
         dif_list = copy.copy(x.val_list)
         self.assertEqual(x.val_list, dif_list)
@@ -424,17 +450,23 @@ class NumericalConversionsTests(unittest.TestCase):
         # pyre-ignore[16]: has no attribute `serializer_module`
         self.serializer: types.ModuleType = self.serializer_module
 
+    def to_list(self, list_data: list[ListT]) -> list[ListT] | _ThriftListWrapper:
+        return to_thrift_list(list_data) if self.is_mutable_run else list_data
+
     def test_overflow(self) -> None:
         with self.assertRaises(OverflowError):
             self.numerical(float_val=5, int_val=2**63 - 1)
 
         with self.assertRaises(OverflowError):
-            self.numerical(float_val=5, int_val=2, int_list=[5, 2**32])
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            self.numerical(float_val=5, int_val=2, int_list=self.to_list([5, 2**32]))
 
     def test_int_to_float(self) -> None:
-        x = self.numerical(int_val=5, float_val=5, float_list=[1, 5, 6])
+        # pyre-ignore[6]: TODO: Thrift-Container init
+        x = self.numerical(int_val=5, float_val=5, float_list=self.to_list([1, 5, 6]))
         x(float_val=10)
-        x(float_list=[6, 7, 8])
+        # pyre-ignore[6]: TODO: Thrift-Container init
+        x(float_list=self.to_list([6, 7, 8]))
 
     def test_int_to_i64(self) -> None:
         large = 2**63 - 1
@@ -497,9 +529,24 @@ class StructDeepcopyTests(unittest.TestCase):
         # pyre-ignore[16]: has no attribute `serializer_module`
         self.serializer: types.ModuleType = self.serializer_module
 
+    def to_list(self, list_data: list[ListT]) -> list[ListT] | _ThriftListWrapper:
+        return to_thrift_list(list_data) if self.is_mutable_run else list_data
+
+    def to_set(self, set_data: set[SetT]) -> set[SetT] | _ThriftSetWrapper:
+        return to_thrift_set(set_data) if self.is_mutable_run else set_data
+
+    def to_map(
+        self, map_data: dict[MapKey, MapValue]
+    ) -> dict[MapKey, MapValue] | _ThriftMapWrapper:
+        return to_thrift_map(map_data) if self.is_mutable_run else map_data
+
     def test_deepcopy(self) -> None:
         x = self.easy(
-            val=1, an_int=self.Integers(small=300), name="bar", val_list=[1, 2, 3, 4]
+            val=1,
+            an_int=self.Integers(small=300),
+            name="bar",
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            val_list=self.to_list([1, 2, 3, 4]),
         )
         dif = copy.deepcopy(x)
         if self.is_mutable_run:
@@ -510,7 +557,11 @@ class StructDeepcopyTests(unittest.TestCase):
 
     def test_nested_in_python_types(self) -> None:
         x = self.easy(
-            val=1, an_int=self.Integers(small=300), name="bar", val_list=[1, 2, 3, 4]
+            val=1,
+            an_int=self.Integers(small=300),
+            name="bar",
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            val_list=self.to_list([1, 2, 3, 4]),
         )
         nested_in_py = {"a": {"b": {"c": x}}}
         dif = copy.deepcopy(nested_in_py)
@@ -518,9 +569,12 @@ class StructDeepcopyTests(unittest.TestCase):
 
     def test_list_set_map_types_copy(self) -> None:
         custom = self.customized(
-            list_template=[1, 2, 3, 4],
-            set_template={1, 2, 3},
-            map_template={0: 1, 2: 3},
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            list_template=self.to_list([1, 2, 3, 4]),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            set_template=self.to_set({1, 2, 3}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            map_template=self.to_map({0: 1, 2: 3}),
         )
         dif = copy.deepcopy(custom)
         if self.is_mutable_run:
@@ -553,7 +607,9 @@ class StructDeepcopyTests(unittest.TestCase):
 
     def test_list_ref_copy(self) -> None:
         obj = self.ComplexRef(
-            name="outer", list_recursive_ref=[self.ComplexRef(name="inner")]
+            name="outer",
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            list_recursive_ref=self.to_list([self.ComplexRef(name="inner")]),
         )
         dif = copy.deepcopy(obj)
         if self.is_mutable_run:
@@ -564,11 +620,16 @@ class StructDeepcopyTests(unittest.TestCase):
 
     def test_list_string_copy(self) -> None:
         obj = self.ListTypes(
-            first=["one", "two", "three"],
-            second=[1, 2, 3],
-            third=[[1, 2], [3, 4]],
-            fourth=[{1, 2}, {3, 4}],
-            fifth=[{1: 2}, {3: 4}],
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            first=self.to_list(["one", "two", "three"]),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            second=self.to_list([1, 2, 3]),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            third=self.to_list([[1, 2], [3, 4]]),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            fourth=self.to_list([{1, 2}, {3, 4}]),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            fifth=self.to_list([{1: 2}, {3: 4}]),
         )
         dif = copy.deepcopy(obj)
         if self.is_mutable_run:
@@ -589,7 +650,10 @@ class StructDeepcopyTests(unittest.TestCase):
             self.assertIs(file, dif)
 
     def test_binary_values_copy(self) -> None:
-        obj = self.IOBufListStruct(iobufs=[IOBuf(b"one"), IOBuf(b"two")])
+        obj = self.IOBufListStruct(
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            iobufs=self.to_list([IOBuf(b"one"), IOBuf(b"two")])
+        )
         # IOBuf does not support deepcopy
         if not self.is_mutable_run:
             dif = copy.deepcopy(obj)

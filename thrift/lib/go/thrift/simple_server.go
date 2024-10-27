@@ -17,13 +17,20 @@
 package thrift
 
 import (
+	"context"
 	"fmt"
 	"net"
 )
 
+// Server is a thrift server
+type Server interface {
+	// ServeContext starts the server, and stops it when the context is cancelled
+	ServeContext(ctx context.Context) error
+}
+
 // NewSimpleServer creates a new server that only supports Header Transport.
-func NewSimpleServer(processor Processor, listener net.Listener, transportType TransportID, options ...func(*ServerOptions)) Server {
-	serverOptions := simpleServerOptions(options...)
+func NewSimpleServer(processor Processor, listener net.Listener, transportType TransportID, options ...ServerOption) Server {
+	serverOptions := newServerOptions(options...)
 	processor = WrapInterceptor(serverOptions.interceptor, processor)
 	switch transportType {
 	case TransportIDHeader:

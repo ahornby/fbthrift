@@ -8,6 +8,7 @@
 import enum as _python_std_enum
 import folly.iobuf as _fbthrift_iobuf
 import thrift.py3.types
+import thrift.python.types
 import thrift.py3.exceptions
 import typing as _typing
 
@@ -15,13 +16,15 @@ import sys
 import itertools
 
 
-class MyEnumA(thrift.py3.types.Enum):
+class MyEnumA(thrift.python.types.Enum):
     fieldA: MyEnumA = ...
     fieldB: MyEnumA = ...
     fieldC: MyEnumA = ...
     def _to_python(self) -> "module.thrift_types.MyEnumA": ...   # type: ignore
     def _to_py3(self) -> MyEnumA: ...
     def _to_py_deprecated(self) -> int: ...
+    def __int__(self) -> int: ...
+    def __index__(self) -> int: ...
 
 
 class SmallStruct(thrift.py3.types.Struct, _typing.Hashable):

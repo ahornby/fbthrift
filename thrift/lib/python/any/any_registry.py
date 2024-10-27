@@ -365,10 +365,7 @@ class AnyRegistry:
 
     def _load_primitive(self, any_obj: Any) -> PrimitiveType:
         return deserialize_primitive(
-            # pyre-fixme[6]: For 1st argument expected `Type[Variable[TPrimitive
-            #  (bound to Union[Enum, IOBuf, bool, bytes, float, int, str])]]` but got
-            #  `Type[Union[Enum, GeneratedError, IOBuf, StructOrUnion, bool, bytes,
-            #  float, int, str]]`.
+            # pyre-fixme[6]: The deserializer expects primitive, but this to_serializable_type function can give any valid type
             self._type_name_to_serializable_type(any_obj.type.name),
             any_obj.data,
             protocol=_standard_protocol_to_serializer_protocol(

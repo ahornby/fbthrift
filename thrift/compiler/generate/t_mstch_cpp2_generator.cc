@@ -34,10 +34,12 @@
 #include <thrift/compiler/generate/cpp/util.h>
 #include <thrift/compiler/generate/mstch_objects.h>
 #include <thrift/compiler/generate/t_mstch_generator.h>
-#include <thrift/compiler/lib/schematizer.h>
 #include <thrift/compiler/lib/uri.h>
 #include <thrift/compiler/sema/ast_validator.h>
+#include <thrift/compiler/sema/schematizer.h>
 #include <thrift/compiler/sema/sema_context.h>
+
+using apache::thrift::compiler::detail::schematizer;
 
 namespace apache::thrift::compiler {
 namespace {
@@ -1988,9 +1990,8 @@ class cpp_mstch_field : public mstch_field {
   mstch::node cpp_accessor_attribute() {
     if (const t_const* annotation = field_->find_structured_annotation_or_null(
             kCppFieldInterceptorUri)) {
-      if (const auto* val =
-              annotation->get_value_from_structured_annotation_or_null(
-                  "noinline")) {
+      if (annotation->get_value_from_structured_annotation_or_null(
+              "noinline")) {
         return std::string("FOLLY_NOINLINE");
       }
     }

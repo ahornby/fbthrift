@@ -15,9 +15,12 @@
   limitations under the License.
 
 }}{{!
-This is import module for mutable and immutable sequence
+This is import module for abstract, mutable, and immutable sequences
+}}{{#program:generate_abstract_types}}{{!
+}}_typing.Sequence{{!
+}}{{/program:generate_abstract_types}}{{!
 }}{{#program:generate_mutable_types}}{{!
-}}_typing.MutableSequence{{!
+}}_fbthrift_python_mutable_containers.MutableList{{!
 }}{{/program:generate_mutable_types}}{{!
 }}{{#program:generate_immutable_types}}{{!
 }}_typing.Sequence{{!

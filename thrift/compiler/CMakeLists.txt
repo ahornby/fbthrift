@@ -103,7 +103,6 @@ add_library(
   compiler_lib
   STATIC
 
-  lib/schematizer.cc
   parse/lexer.cc
   parse/lexer.h
   parse/parser.cc
@@ -116,6 +115,7 @@ add_library(
   sema/explicit_include_validator.cc
   sema/scope_validator.cc
   sema/sema.cc
+  sema/schematizer.cc
   sema/standard_validator.cc
 )
 target_link_libraries(
@@ -134,7 +134,6 @@ add_library(
   generate/cpp/util.cc
   generate/go/util.cc
   generate/java/util.cc
-  generate/py3/util.cpp
   generate/python/util.cc
   generate/rust/util.cc
 )
@@ -201,6 +200,7 @@ add_executable(
   main.cc
   compiler.cc
 )
+target_compile_definitions(thrift1 PRIVATE THRIFT_OSS)
 target_link_libraries(
   thrift1
   compiler_ast

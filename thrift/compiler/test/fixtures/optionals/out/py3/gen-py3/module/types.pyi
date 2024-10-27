@@ -8,6 +8,7 @@
 import enum as _python_std_enum
 import folly.iobuf as _fbthrift_iobuf
 import thrift.py3.types
+import thrift.python.types
 import thrift.py3.exceptions
 import typing as _typing
 
@@ -15,13 +16,15 @@ import sys
 import itertools
 
 
-class Animal(thrift.py3.types.Enum):
+class Animal(thrift.python.types.Enum):
     DOG: Animal = ...
     CAT: Animal = ...
     TARANTULA: Animal = ...
     def _to_python(self) -> "module.thrift_types.Animal": ...   # type: ignore
     def _to_py3(self) -> Animal: ...
     def _to_py_deprecated(self) -> int: ...
+    def __int__(self) -> int: ...
+    def __index__(self) -> int: ...
 
 
 class Color(thrift.py3.types.Struct, _typing.Hashable):

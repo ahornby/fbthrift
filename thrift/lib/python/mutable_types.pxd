@@ -86,6 +86,18 @@ cdef extern from "<thrift/lib/python/types.h>" namespace "::apache::thrift::pyth
     cdef object createUnionTuple() except+
     cdef object createMutableUnionDataHolder() except+
 
+cdef class _ThriftListWrapper:
+    cdef object _list_data
+
+cdef class _ThriftSetWrapper:
+    cdef object _set_data
+
+cdef class _ThriftMapWrapper:
+    cdef object _map_data
+
+cdef class _ThriftContainerWrapper:
+    cdef object _container_data
+
 cdef class MutableStructOrUnion:
     cdef object _fbthrift_data
     cdef IOBuf _fbthrift_serialize(MutableStructOrUnion self, Protocol proto)

@@ -39,11 +39,20 @@ from python_test.enums.thrift_types import (
     OptionalFile,
     Perm,
 )
+from thrift.python.mutable_types import (
+    _ThriftListWrapper,
+    _ThriftMapWrapper,
+    to_thrift_list,
+    to_thrift_map,
+)
 
 from thrift.python.types import BadEnum, Enum, Flag
 
 
 _E = TypeVar("_E", bound=Enum)
+ListT = TypeVar("ListT")
+MapKey = TypeVar("MapKey")
+MapValue = TypeVar("MapValue")
 
 
 # tt = test_types, ser = serializer
@@ -73,6 +82,14 @@ class EnumTests(unittest.TestCase):
         # pyre-ignore[16]: has no attribute `serializer_module`
         self.serializer: types.ModuleType = self.serializer_module
 
+    def to_list(self, list_data: list[ListT]) -> list[ListT] | _ThriftListWrapper:
+        return to_thrift_list(list_data) if self.is_mutable_run else list_data
+
+    def to_map(
+        self, map_data: dict[MapKey, MapValue]
+    ) -> dict[MapKey, MapValue] | _ThriftMapWrapper:
+        return to_thrift_map(map_data) if self.is_mutable_run else map_data
+
     def test_bad_member_names(self) -> None:
         self.assertIsInstance(self.BadMembers.name_, self.BadMembers)
         self.assertIsInstance(self.BadMembers.value_, self.BadMembers)
@@ -92,6 +109,7 @@ class EnumTests(unittest.TestCase):
         self.assertIsInstance(self.Kind.DIR, int, "Enums are Ints")
         self.assertIn(x.type, self.Kind)
         self.assertEqual(x.type.value, 4)
+        self.assertRaises(ValueError, lambda: self.Kind(47))
 
     def test_enum_value_rename(self) -> None:
         """The value name is None but we auto rename it to None_"""
@@ -135,7 +153,8 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_list=[1, 5, 0])
+                # pyre-ignore[6]: TODO: Thrift-Container init
+                self.OptionalColorGroups(color_list=self.to_list([1, 5, 0]))
             ),
         )
         self.assertEqual(len(x.color_list), 3)
@@ -147,7 +166,8 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_list=[1, 5, 0])
+                # pyre-ignore[6]: TODO: Thrift-Container init
+                self.OptionalColorGroups(color_list=self.to_list([1, 5, 0]))
             ),
         )
         for idx, v in enumerate(x.color_list):
@@ -162,7 +182,8 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_list=[1, 5, 0])
+                # pyre-ignore[6]: TODO: Thrift-Container init
+                self.OptionalColorGroups(color_list=self.to_list([1, 5, 0]))
             ),
         )
         for idx, v in enumerate(reversed(x.color_list)):
@@ -177,7 +198,8 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_list=[1, 5, 0])
+                # pyre-ignore[6]: TODO: Thrift-Container init
+                self.OptionalColorGroups(color_list=self.to_list([1, 5, 0]))
             ),
         )
         for v in x.color_set:
@@ -188,7 +210,10 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_map={1: 2, 0: 5, 6: 1, 7: 8})
+                self.OptionalColorGroups(
+                    # pyre-ignore[6]: TODO: Thrift-Container init
+                    color_map=self.to_map({1: 2, 0: 5, 6: 1, 7: 8})
+                )
             ),
         )
         val = x.color_map[self.Color.red]
@@ -198,7 +223,10 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_map={1: 2, 0: 5, 6: 1, 7: 8})
+                self.OptionalColorGroups(
+                    # pyre-ignore[6]: TODO: Thrift-Container init
+                    color_map=self.to_map({1: 2, 0: 5, 6: 1, 7: 8})
+                )
             ),
         )
         s = set()
@@ -215,7 +243,10 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_map={1: 2, 0: 5, 6: 1, 7: 8})
+                self.OptionalColorGroups(
+                    # pyre-ignore[6]: TODO: Thrift-Container init
+                    color_map=self.to_map({1: 2, 0: 5, 6: 1, 7: 8})
+                )
             ),
         )
         s = set()
@@ -232,7 +263,10 @@ class EnumTests(unittest.TestCase):
         x = self.serializer.deserialize(
             self.ColorGroups,
             self.serializer.serialize_iobuf(
-                self.OptionalColorGroups(color_map={1: 2, 0: 5, 6: 1, 7: 8})
+                self.OptionalColorGroups(
+                    # pyre-ignore[6]: TODO: Thrift-Container init
+                    color_map=self.to_map({1: 2, 0: 5, 6: 1, 7: 8})
+                )
             ),
         )
         for k, v in x.color_map.items():
@@ -333,6 +367,12 @@ class EnumTests(unittest.TestCase):
         _ = list(self.Color)
         self.assertIsInstance(self.Color.red, Enum)
         self.assertTrue(issubclass(self.Color, Enum))
+
+    def test_callable(self) -> None:
+        vals = range(3)
+        # this is done to verify pyre typestub more than anything
+        colors = list(map(self.Color, vals))
+        self.assertEqual(colors, list(self.Color))
 
 
 # tt = test_types, ser = serializer

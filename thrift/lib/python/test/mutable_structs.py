@@ -29,6 +29,8 @@ from thrift.python.mutable_types import (
     _isset as mutable_isset,
     MutableStruct,
     MutableStructOrUnion,
+    to_thrift_list,
+    to_thrift_set,
 )
 
 from thrift.test.thrift_python.struct_test.thrift_mutable_types import (
@@ -37,6 +39,8 @@ from thrift.test.thrift_python.struct_test.thrift_mutable_types import (
     TestStructAllThriftContainerTypes as TestStructAllThriftContainerTypesMutable,
     TestStructAllThriftPrimitiveTypes as TestStructAllThriftPrimitiveTypesMutable,
     TestStructAllThriftPrimitiveTypesWithDefaultValues as TestStructAllThriftPrimitiveTypesWithDefaultValuesMutable,
+    TestStructAsListElement as TestStructAsListElementMutable,
+    TestStructContainerAssignment as TestStructContainerAssignmentMutable,
     TestStructWithDefaultValues as TestStructWithDefaultValuesMutable,
     TestStructWithExceptionField as TestStructWithExceptionFieldMutable,
     TestStructWithUnionField as TestStructWithUnionFieldMutable,
@@ -228,31 +232,36 @@ class ThriftPython_MutableStruct_Test(unittest.TestCase):
     @parameterized.expand(
         [
             (TestStructAllThriftContainerTypesMutable(),),
-            (TestStructAllThriftContainerTypesMutable(unqualified_list_i32=[1, 2, 3]),),
-            (TestStructAllThriftContainerTypesMutable(optional_list_i32=[11, 22, 33]),),
             (
                 TestStructAllThriftContainerTypesMutable(
-                    unqualified_list_i32=[1, 2], optional_list_i32=[3]
+                    unqualified_list_i32=to_thrift_list([1, 2, 3])
                 ),
             ),
             (
                 TestStructAllThriftContainerTypesMutable(
-                    # pyre-ignore[6]: Fixme: type error to be addressed later
-                    unqualified_set_string=["1", "2", "3"]
+                    optional_list_i32=to_thrift_list([11, 22, 33])
                 ),
             ),
             (
                 TestStructAllThriftContainerTypesMutable(
-                    # pyre-ignore[6]: Fixme: type error to be addressed later
-                    optional_set_string=["11", "22", "33"]
+                    unqualified_list_i32=to_thrift_list([1, 2]),
+                    optional_list_i32=to_thrift_list([3]),
                 ),
             ),
             (
                 TestStructAllThriftContainerTypesMutable(
-                    # pyre-ignore[6]: Fixme: type error to be addressed later
-                    unqualified_set_string=["1", "2", "3"],
-                    # pyre-ignore[6]: Fixme: type error to be addressed later
-                    optional_set_string=["11", "22", "33"],
+                    unqualified_set_string=to_thrift_set({"1", "2", "3"})
+                ),
+            ),
+            (
+                TestStructAllThriftContainerTypesMutable(
+                    optional_set_string=to_thrift_set({"11", "22", "33"})
+                ),
+            ),
+            (
+                TestStructAllThriftContainerTypesMutable(
+                    unqualified_set_string=to_thrift_set({"1", "2", "3"}),
+                    optional_set_string=to_thrift_set({"11", "22", "33"}),
                 ),
             ),
         ]
@@ -421,3 +430,55 @@ class ThriftPython_MutableStruct_Test(unittest.TestCase):
         self.assertEqual(42, mutable_s2.unqualified_integer)
         self.assertEqual("hello", mutable_s2.unqualified_struct.unqualified_string)
         self.assertEqual([1, 2, 3], mutable_s2.unqualified_list_i32)
+
+    def test_struct_attribute_cache(self) -> None:
+        """
+        struct TestStructAsListElement {
+          1: string string_field;
+          2: list<i32> list_int;
+        }
+
+        struct TestStructContainerAssignment {
+          ...
+          5: list<TestStructAsListElement> list_struct;
+          ...
+        }
+        """
+        s_elem = TestStructAsListElementMutable(
+            string_field="elem", list_int=to_thrift_list([1])
+        )
+
+        s = TestStructContainerAssignmentMutable(
+            list_struct=to_thrift_list([s_elem, s_elem])
+        )
+
+        # `to_thrift_list()` always copies the containers inside it. However,
+        # if the container element is a Thrift struct, union or exception,
+        # assignment uses reference semantics for them.
+        self.assertEqual(s_elem, s.list_struct[0])
+        self.assertEqual(s_elem, s.list_struct[1])
+
+        # `s_elem`, `s.list_struct[0]` and  `s.list_struct[1]` are the "same"
+        # structs
+
+        # Demonstrate that they are the "same" structs by updating the `list_int`.
+        self.assertEqual([1], s_elem.list_int)
+        self.assertEqual([1], s.list_struct[0].list_int)
+        self.assertEqual([1], s.list_struct[1].list_int)
+        s.list_struct[0].list_int.append(2)
+        self.assertEqual([1, 2], s_elem.list_int)
+        self.assertEqual([1, 2], s.list_struct[0].list_int)
+        self.assertEqual([1, 2], s.list_struct[1].list_int)
+
+        # Demonstrate that they are the "same" structs by updating the `string_field`.
+        # String fields are unique because when they are first accessed, they are
+        # read from `struct._fbthrift_data`, converted to a Python type, and cached.
+        # On subsequent accesses, the underlying `struct._fbthrift_data` is not
+        # accessed again; the cached value is used.
+        self.assertEqual("elem", s_elem.string_field)
+        self.assertEqual("elem", s.list_struct[0].string_field)
+        self.assertEqual("elem", s.list_struct[1].string_field)
+        s.list_struct[1].string_field = "updated"
+        self.assertEqual("updated", s_elem.string_field)
+        self.assertEqual("updated", s.list_struct[0].string_field)
+        self.assertEqual("updated", s.list_struct[1].string_field)

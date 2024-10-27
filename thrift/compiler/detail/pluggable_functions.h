@@ -24,22 +24,24 @@
 namespace apache::thrift::compiler::detail {
 
 /**
- * A simple reimplementation of thrift's PluggableFunction without using
- * dependencies banned from the compiler.
+ * A simple reimplementation of Thrift's PluggableFunction using only
+ * dependencies allowed in the compiler.
  *
- * Tag argument must have a static member function `defaultImpl` that is called
+ * Tag argument must have a static member function `default_impl` that is called
  * when the function is not set.
  *
  * Not thread-safe.
  *
- * Ex:
- *   struct MyTag { static void defaultImpl(int) {} };
+ * Example:
+ *   struct MyTag {
+ *     static void default_impl(int) {}
+ *   };
  *   pluggable_functions().set<MyTag>(+[](int){});
  *   pluggable_functions().call<MyTag>(42);
  */
 class pluggable_function_set {
   template <typename Tag>
-  using signature = decltype(Tag::defaultImpl);
+  using signature = decltype(Tag::default_impl);
 
  public:
   template <typename Tag>
@@ -65,7 +67,7 @@ class pluggable_function_set {
     if (auto fn = funcs.find(id); fn != funcs.end()) {
       return reinterpret_cast<signature<Tag>*>(fn->second);
     }
-    return Tag::defaultImpl;
+    return Tag::default_impl;
   }
 };
 

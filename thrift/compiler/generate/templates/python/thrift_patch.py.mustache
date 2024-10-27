@@ -16,30 +16,49 @@
 
 }}
 # @{{!}}generated
+from __future__ import annotations
 
 import typing
 import typing as _typing
 
 from common.thrift.patch.detail.dynamic_patch import (
     BaseStructPatch,
+    ListPatch,
+    SetPatch,
     MapPatch,
     OptionalFieldPatch,
 )
 
 from common.thrift.patch.detail.py_bindings.DynamicPatch import (
+    BoolPatch,
+    BytePatch,
+    I16Patch,
+    I32Patch,
+    I64Patch,
+    FloatPatch,
+    DoublePatch,
     StringPatch,
+    BinaryPatch,
 )
+
+import thrift.python.types as _fbthrift_python_types
+import folly.iobuf as _fbthrift_iobuf
 
 import {{program:module_path}}.thrift_types
-from {{program:module_path}}.thrift_types import (
-{{#program:structs}}
-    {{struct:py_name}},
-{{/program:structs}}
-)
+
+{{#program:include_namespaces}}
+{{#has_types?}}
+
+import {{included_module_path}}.{{> types/types_import_path}}
+import {{included_module_path}}.thrift_patch
+{{/has_types?}}
+{{/program:include_namespaces}}
 
 {{#program:structs}}
 
-class {{struct:py_name}}Patch(BaseStructPatch[{{struct:py_name}}]):
+class {{struct:py_name}}Patch(BaseStructPatch[{{program:module_path}}.thrift_types.{{struct:py_name}}]):
+    pass
+
 {{#struct:fields_ordered_by_id}}
     @property
     def {{field:py_name}}(self) -> OptionalFieldPatch[
@@ -49,6 +68,7 @@ class {{struct:py_name}}Patch(BaseStructPatch[{{struct:py_name}}]):
         return OptionalFieldPatch(
             {{#field:type}}{{> common/thrift_patch_callback}}{{/field:type}},
             self._patch,
-            {{field:key}})
+            {{field:key}},
+            {{#field:type}}{{ >types/typeinfo }}{{/field:type}})
 {{/struct:fields_ordered_by_id}}
 {{/program:structs}}

@@ -7,6 +7,7 @@ package module
 
 import (
     "maps"
+    "sync"
 
     thrift "github.com/facebook/fbthrift/thrift/lib/go/thrift/types"
     metadata "github.com/facebook/fbthrift/thrift/lib/thrift/metadata"
@@ -19,72 +20,99 @@ var _ = metadata.GoUnusedProtection__
 
 // Premade Thrift types
 var (
+    premadeThriftType_module_Animal *metadata.ThriftType = nil
+    premadeThriftType_double *metadata.ThriftType = nil
+    premadeThriftType_module_Color *metadata.ThriftType = nil
+    premadeThriftType_string *metadata.ThriftType = nil
+    premadeThriftType_bool *metadata.ThriftType = nil
+    premadeThriftType_module_Vehicle *metadata.ThriftType = nil
+    premadeThriftType_i64 *metadata.ThriftType = nil
+    premadeThriftType_module_PersonID *metadata.ThriftType = nil
+    premadeThriftType_i16 *metadata.ThriftType = nil
+    premadeThriftType_set_module_PersonID *metadata.ThriftType = nil
+    premadeThriftType_map_module_Animal_string *metadata.ThriftType = nil
+    premadeThriftType_list_module_Vehicle *metadata.ThriftType = nil
+    premadeThriftType_module_Person *metadata.ThriftType = nil
+)
+
+// Premade Thrift type initializer
+var premadeThriftTypesInitOnce = sync.OnceFunc(func() {
     premadeThriftType_module_Animal = metadata.NewThriftType().SetTEnum(
         metadata.NewThriftEnumType().
             SetName("module.Animal"),
-            )
+    )
     premadeThriftType_double = metadata.NewThriftType().SetTPrimitive(
         metadata.ThriftPrimitiveType_THRIFT_DOUBLE_TYPE.Ptr(),
-            )
+    )
     premadeThriftType_module_Color = metadata.NewThriftType().SetTStruct(
         metadata.NewThriftStructType().
             SetName("module.Color"),
-            )
+    )
     premadeThriftType_string = metadata.NewThriftType().SetTPrimitive(
         metadata.ThriftPrimitiveType_THRIFT_STRING_TYPE.Ptr(),
-            )
+    )
     premadeThriftType_bool = metadata.NewThriftType().SetTPrimitive(
         metadata.ThriftPrimitiveType_THRIFT_BOOL_TYPE.Ptr(),
-            )
+    )
     premadeThriftType_module_Vehicle = metadata.NewThriftType().SetTStruct(
         metadata.NewThriftStructType().
             SetName("module.Vehicle"),
-            )
+    )
     premadeThriftType_i64 = metadata.NewThriftType().SetTPrimitive(
         metadata.ThriftPrimitiveType_THRIFT_I64_TYPE.Ptr(),
-            )
+    )
     premadeThriftType_module_PersonID = metadata.NewThriftType().SetTTypedef(
         metadata.NewThriftTypedefType().
             SetName("module.PersonID").
             SetUnderlyingType(premadeThriftType_i64),
-            )
+    )
     premadeThriftType_i16 = metadata.NewThriftType().SetTPrimitive(
         metadata.ThriftPrimitiveType_THRIFT_I16_TYPE.Ptr(),
-            )
+    )
     premadeThriftType_set_module_PersonID = metadata.NewThriftType().SetTSet(
         metadata.NewThriftSetType().
             SetValueType(premadeThriftType_module_PersonID),
-            )
+    )
     premadeThriftType_map_module_Animal_string = metadata.NewThriftType().SetTMap(
         metadata.NewThriftMapType().
             SetKeyType(premadeThriftType_module_Animal).
             SetValueType(premadeThriftType_string),
-            )
+    )
     premadeThriftType_list_module_Vehicle = metadata.NewThriftType().SetTList(
         metadata.NewThriftListType().
             SetValueType(premadeThriftType_module_Vehicle),
-            )
+    )
     premadeThriftType_module_Person = metadata.NewThriftType().SetTStruct(
         metadata.NewThriftStructType().
             SetName("module.Person"),
-            )
+    )
+})
+
+var premadeThriftTypesMapOnce = sync.OnceValue(
+    func() map[string]*metadata.ThriftType {
+        // Relies on premade Thrift types initialization
+        premadeThriftTypesInitOnce()
+        return map[string]*metadata.ThriftType{
+            "module.Animal": premadeThriftType_module_Animal,
+            "double": premadeThriftType_double,
+            "module.Color": premadeThriftType_module_Color,
+            "string": premadeThriftType_string,
+            "bool": premadeThriftType_bool,
+            "module.Vehicle": premadeThriftType_module_Vehicle,
+            "i64": premadeThriftType_i64,
+            "module.PersonID": premadeThriftType_module_PersonID,
+            "i16": premadeThriftType_i16,
+            "module.Person": premadeThriftType_module_Person,
+        }
+    },
 )
 
-var premadeThriftTypesMap = map[string]*metadata.ThriftType{
-    "module.Animal": premadeThriftType_module_Animal,
-    "double": premadeThriftType_double,
-    "module.Color": premadeThriftType_module_Color,
-    "string": premadeThriftType_string,
-    "bool": premadeThriftType_bool,
-    "module.Vehicle": premadeThriftType_module_Vehicle,
-    "i64": premadeThriftType_i64,
-    "module.PersonID": premadeThriftType_module_PersonID,
-    "i16": premadeThriftType_i16,
-    "module.Person": premadeThriftType_module_Person,
-}
-
-var structMetadatas = []*metadata.ThriftStruct{
-    metadata.NewThriftStruct().
+var structMetadatasOnce = sync.OnceValue(
+    func() []*metadata.ThriftStruct {
+        // Relies on premade Thrift types initialization
+        premadeThriftTypesInitOnce()
+        return []*metadata.ThriftStruct{
+            metadata.NewThriftStruct().
     SetName("module.Color").
     SetIsUnion(false).
     SetFields(
@@ -111,7 +139,7 @@ var structMetadatas = []*metadata.ThriftStruct{
     SetType(premadeThriftType_double),
         },
     ),
-    metadata.NewThriftStruct().
+            metadata.NewThriftStruct().
     SetName("module.Vehicle").
     SetIsUnion(false).
     SetFields(
@@ -143,7 +171,7 @@ var structMetadatas = []*metadata.ThriftStruct{
     SetType(premadeThriftType_bool),
         },
     ),
-    metadata.NewThriftStruct().
+            metadata.NewThriftStruct().
     SetName("module.Person").
     SetIsUnion(false).
     SetFields(
@@ -200,13 +228,25 @@ var structMetadatas = []*metadata.ThriftStruct{
     SetType(premadeThriftType_list_module_Vehicle),
         },
     ),
-}
+        }
+    },
+)
 
-var exceptionMetadatas = []*metadata.ThriftException{
-}
+var exceptionMetadatasOnce = sync.OnceValue(
+    func() []*metadata.ThriftException {
+        // Relies on premade Thrift types initialization
+        premadeThriftTypesInitOnce()
+        return []*metadata.ThriftException{
+        }
+    },
+)
 
-var enumMetadatas = []*metadata.ThriftEnum{
-    metadata.NewThriftEnum().
+var enumMetadatasOnce = sync.OnceValue(
+    func() []*metadata.ThriftEnum {
+        // Relies on premade Thrift types initialization
+        premadeThriftTypesInitOnce()
+        return []*metadata.ThriftEnum{
+            metadata.NewThriftEnum().
     SetName("module.Animal").
     SetElements(
         map[int32]string{
@@ -215,85 +255,65 @@ var enumMetadatas = []*metadata.ThriftEnum{
             3: "TARANTULA",
         },
     ),
-}
+        }
+    },
+)
 
-var serviceMetadatas = []*metadata.ThriftService{
-}
+var serviceMetadatasOnce = sync.OnceValue(
+    func() []*metadata.ThriftService {
+        // Relies on premade Thrift types initialization
+        premadeThriftTypesInitOnce()
+        return []*metadata.ThriftService{
+        }
+    },
+)
 
 // GetMetadataThriftType (INTERNAL USE ONLY).
 // Returns metadata ThriftType for a given full type name.
 func GetMetadataThriftType(fullName string) *metadata.ThriftType {
-    return premadeThriftTypesMap[fullName]
+    return premadeThriftTypesMapOnce()[fullName]
 }
 
 // GetThriftMetadata returns complete Thrift metadata for current and imported packages.
 func GetThriftMetadata() *metadata.ThriftMetadata {
-    allEnums := GetEnumsMetadata()
-    allStructs := GetStructsMetadata()
-    allExceptions := GetExceptionsMetadata()
-    allServices := GetServicesMetadata()
-
-    return metadata.NewThriftMetadata().
-        SetEnums(allEnums).
-        SetStructs(allStructs).
-        SetExceptions(allExceptions).
-        SetServices(allServices)
-}
-
-// GetEnumsMetadata returns Thrift metadata for enums in the current and recursively included packages.
-func GetEnumsMetadata() map[string]*metadata.ThriftEnum {
     allEnumsMap := make(map[string]*metadata.ThriftEnum)
-
-    // Add enum metadatas from the current program...
-    for _, enumMetadata := range enumMetadatas {
-        allEnumsMap[enumMetadata.GetName()] = enumMetadata
-    }
-
-    // ...now add enum metadatas from recursively included programs.
-
-    return allEnumsMap
-}
-
-// GetStructsMetadata returns Thrift metadata for structs in the current and recursively included packages.
-func GetStructsMetadata() map[string]*metadata.ThriftStruct {
     allStructsMap := make(map[string]*metadata.ThriftStruct)
-
-    // Add struct metadatas from the current program...
-    for _, structMetadata := range structMetadatas {
-        allStructsMap[structMetadata.GetName()] = structMetadata
-    }
-
-    // ...now add struct metadatas from recursively included programs.
-
-    return allStructsMap
-}
-
-// GetExceptionsMetadata returns Thrift metadata for exceptions in the current and recursively included packages.
-func GetExceptionsMetadata() map[string]*metadata.ThriftException {
     allExceptionsMap := make(map[string]*metadata.ThriftException)
-
-    // Add exception metadatas from the current program...
-    for _, exceptionMetadata := range exceptionMetadatas {
-        allExceptionsMap[exceptionMetadata.GetName()] = exceptionMetadata
-    }
-
-    // ...now add exception metadatas from recursively included programs.
-
-    return allExceptionsMap
-}
-
-// GetServicesMetadata returns Thrift metadata for services in the current and recursively included packages.
-func GetServicesMetadata() map[string]*metadata.ThriftService {
     allServicesMap := make(map[string]*metadata.ThriftService)
 
+    // Add enum metadatas from the current program...
+    for _, enumMetadata := range enumMetadatasOnce() {
+        allEnumsMap[enumMetadata.GetName()] = enumMetadata
+    }
+    // Add struct metadatas from the current program...
+    for _, structMetadata := range structMetadatasOnce() {
+        allStructsMap[structMetadata.GetName()] = structMetadata
+    }
+    // Add exception metadatas from the current program...
+    for _, exceptionMetadata := range exceptionMetadatasOnce() {
+        allExceptionsMap[exceptionMetadata.GetName()] = exceptionMetadata
+    }
     // Add service metadatas from the current program...
-    for _, serviceMetadata := range serviceMetadatas {
+    for _, serviceMetadata := range serviceMetadatasOnce() {
         allServicesMap[serviceMetadata.GetName()] = serviceMetadata
     }
 
-    // ...now add service metadatas from recursively included programs.
+    // Obtain Thrift metadatas from recursively included programs...
+    var recursiveThriftMetadatas []*metadata.ThriftMetadata
 
-    return allServicesMap
+    // ...now merge metadatas from recursively included programs.
+    for _, thriftMetadata := range recursiveThriftMetadatas {
+        maps.Copy(allEnumsMap, thriftMetadata.GetEnums())
+        maps.Copy(allStructsMap, thriftMetadata.GetStructs())
+        maps.Copy(allExceptionsMap, thriftMetadata.GetExceptions())
+        maps.Copy(allServicesMap, thriftMetadata.GetServices())
+    }
+
+    return metadata.NewThriftMetadata().
+        SetEnums(allEnumsMap).
+        SetStructs(allStructsMap).
+        SetExceptions(allExceptionsMap).
+        SetServices(allServicesMap)
 }
 
 // GetThriftMetadataForService returns Thrift metadata for the given service.

@@ -34,6 +34,7 @@ import enum
 import functools
 import itertools
 import threading
+import typing
 
 from folly cimport cFollyIsDebug
 from thrift.python.exceptions cimport GeneratedError
@@ -47,7 +48,7 @@ cdef extern from *:
 
 
 def _is_py3_struct(obj):
-    try: 
+    try:
         import thrift.py3.types
         return isinstance(obj, thrift.py3.types.Struct)
     except ImportError:
@@ -122,6 +123,13 @@ cdef class TypeInfoBase:
         type to the same Python type.
         """
         raise NotImplementedError("Not implemented on base TypeInfoBase class")
+
+    def is_container(self):
+        """
+        Return `True` if it is one of the immutable or mutable `TypeInfo` classes
+        for list, map or set.
+        """
+        return False
 
 @cython.final
 cdef class TypeInfo(TypeInfoBase):
@@ -316,6 +324,18 @@ StructOrError = cython.fused_type(Struct, GeneratedError)
 #         "thrift.python.adapter.Adapter", typing.Callable[[], typing.Optional[Struct]]
 #     ]
 # )
+
+
+AnyTypeInfo = typing.Union[
+    StructTypeInfo,
+    ListTypeInfo,
+    SetTypeInfo,
+    MapTypeInfo,
+    EnumTypeInfo,
+    TypeInfo,
+    IntegerTypeInfo,
+    StringTypeInfo,
+]
 
 cdef class FieldInfo:
     def __cinit__(self, id, qualifier, name, py_name, type_info, default_value, adapter_info, is_primitive, idl_type = -1):
@@ -622,6 +642,12 @@ cdef class ListTypeInfo(TypeInfoBase):
 
         return self.val_info.same_as((<ListTypeInfo>other).val_info)
 
+    def is_container(self):
+        return True
+
+    def get_val_info(self):
+        return self.val_info
+
     def __reduce__(self):
         return (ListTypeInfo, (self.val_info,))
 
@@ -672,6 +698,12 @@ cdef class SetTypeInfo(TypeInfoBase):
             return False
 
         return self.val_info.same_as((<SetTypeInfo>other).val_info)
+
+    def is_container(self):
+        return True
+
+    def get_val_info(self):
+        return self.val_info
 
     def __reduce__(self):
         return (SetTypeInfo, (self.val_info,))
@@ -739,6 +771,15 @@ cdef class MapTypeInfo(TypeInfoBase):
 
         return (self.key_info.same_as((<MapTypeInfo>other).key_info) and
             self.val_info.same_as((<MapTypeInfo>other).val_info))
+
+    def is_container(self):
+        return True
+
+    def get_key_info(self):
+        return self.key_info
+
+    def get_val_info(self):
+        return self.val_info
 
     def __reduce__(self):
         return (MapTypeInfo, (self.key_info, self.val_info))
@@ -932,7 +973,7 @@ cdef class AdaptedTypeInfo(TypeInfoBase):
         # dependent of the TAdaptFrom (the thrift Type) and the TAdaptTo (the python type)
         # The transitive annotation has no part in the type calculus and should not
         # appear in the comparison.
-        # 
+        #
         return (self._orig_type_info.same_as(other_typeinfo._orig_type_info) and
             self._adapter_class == other_typeinfo._adapter_class)
 
@@ -2321,16 +2362,10 @@ class Enum(metaclass=EnumMeta):
             )
         return self._fbthrift_value_ == other
 
+    # thrift-python enums have int base, so have to define
+    # __ne__ to avoid __ne__ based on int value alone
     def __ne__(self, other):
-        if isinstance(other, Enum):
-            return self is not other
-        if cFollyIsDebug and isinstance(other, (bool, float)):
-            warnings.warn(
-                f"Did you really mean to compare {type(self)} and {type(other)}?",
-                RuntimeWarning,
-                stacklevel=1
-            )
-        return self._fbthrift_value_ != other
+        return not (self == other)
 
     def __hash__(self):
         return hash(self._fbthrift_value_)

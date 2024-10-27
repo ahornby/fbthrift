@@ -213,13 +213,15 @@ typedef std::function<void(
 template <typename T>
 class ThriftServerAsyncProcessorFactory : public AsyncProcessorFactory {
  public:
-  explicit ThriftServerAsyncProcessorFactory(std::shared_ptr<T> t) {
-    svIf_ = t;
-  }
+  explicit ThriftServerAsyncProcessorFactory(std::shared_ptr<T> t) : svIf_(t) {}
 
   std::unique_ptr<apache::thrift::AsyncProcessor> getProcessor() override {
     return std::unique_ptr<apache::thrift::AsyncProcessor>(
         new typename T::ProcessorType(svIf_.get()));
+  }
+
+  CreateMethodMetadataResult createMethodMetadata() override {
+    return svIf_->T::createMethodMetadata();
   }
 
   std::vector<ServiceHandlerBase*> getServiceHandlers() override {
@@ -2722,7 +2724,7 @@ class ThriftServer : public apache::thrift::concurrency::Runnable,
   using StopController = ThriftServerStopController;
 
   // Allows running the server as a Runnable thread
-  virtual void run() override { serve(); }
+  void run() override { serve(); }
 
  private:
   folly::PrimaryPtr<StopController> stopController_{
@@ -3125,8 +3127,8 @@ class ThriftAcceptorFactory : public wangle::AcceptorFactorySharedSSLContext {
  public:
   ThriftAcceptorFactory(ThriftServer* server) : server_(server) {}
 
-  std::shared_ptr<wangle::SharedSSLContextManager>
-  initSharedSSLContextManager() {
+  std::shared_ptr<wangle::SharedSSLContextManager> initSharedSSLContextManager()
+      override {
     if constexpr (!std::is_same<SharedSSLContextManagerClass, void>::value) {
       sharedSSLContextManager_ = std::make_shared<SharedSSLContextManagerClass>(
           server_->getServerSocketConfig());
@@ -3134,7 +3136,8 @@ class ThriftAcceptorFactory : public wangle::AcceptorFactorySharedSSLContext {
     return sharedSSLContextManager_;
   }
 
-  std::shared_ptr<wangle::Acceptor> newAcceptor(folly::EventBase* eventBase) {
+  std::shared_ptr<wangle::Acceptor> newAcceptor(
+      folly::EventBase* eventBase) override {
     if (!sharedSSLContextManager_) {
       return AcceptorClass::create(server_, eventBase);
     }

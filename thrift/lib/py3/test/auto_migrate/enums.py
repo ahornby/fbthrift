@@ -50,6 +50,7 @@ class EnumTests(unittest.TestCase):
         self.assertNotEqual(x.type, Kind.SOCK)
         self.assertIn(x.type, Kind)
         self.assertEqual(int(x.type), 4)
+        self.assertRaises(ValueError, lambda: Kind(47))
 
     def test_normal_enum_not_int(self) -> None:
         x = File(name="/etc", type=Kind.DIR)
@@ -164,7 +165,7 @@ class EnumTests(unittest.TestCase):
     def assertBadEnum(self, e: BadEnum | Enum, cls: Type[_E], val: int) -> None:
         self.assertIsInstance(e, BadEnum)
         self.assertEqual(e.value, val)
-        self.assertEqual(e.enum, cls)
+        self.assertEqual(cast(BadEnum, e).enum, cls)
         self.assertEqual(int(e), val)
 
     def test_pickle(self) -> None:
@@ -243,6 +244,11 @@ class EnumTests(unittest.TestCase):
     def test_isinstance_Enum(self) -> None:
         self.assertIsInstance(Color.red, Enum)
         self.assertTrue(issubclass(Color, Enum))
+
+    def test_callable(self) -> None:
+        vals = range(3)
+        colors = list(map(Color, vals))
+        self.assertEqual(colors, list(Color))
 
 
 class EnumMetaTests(unittest.TestCase):

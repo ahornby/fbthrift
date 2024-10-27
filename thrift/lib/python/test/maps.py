@@ -21,7 +21,7 @@ from __future__ import annotations
 import unittest
 
 from enum import Enum
-from typing import Dict, Type
+from typing import Dict, Type, TypeVar
 
 import python_test.containers.thrift_mutable_types as mutable_containers_types
 import python_test.containers.thrift_types as immutable_containers_types
@@ -48,6 +48,16 @@ from python_test.maps.thrift_types import (
     StrStrIntListMapMap as StrStrIntListMapMapType,
     StrStrMap as StrStrMapType,
 )
+from thrift.python.mutable_types import (
+    _ThriftListWrapper,
+    _ThriftMapWrapper,
+    to_thrift_list,
+    to_thrift_map,
+)
+
+ListT = TypeVar("ListT")
+MapKey = TypeVar("MapKey")
+MapValue = TypeVar("MapValue")
 
 
 class MyStringEnum(str, Enum):
@@ -101,6 +111,14 @@ class MapTests(unittest.TestCase):
             "thrift_mutable_types"
         )
 
+    def to_list(self, list_data: list[ListT]) -> list[ListT] | _ThriftListWrapper:
+        return to_thrift_list(list_data) if self.is_mutable_run else list_data
+
+    def to_map(
+        self, map_data: dict[MapKey, MapValue]
+    ) -> dict[MapKey, MapValue] | _ThriftMapWrapper:
+        return to_thrift_map(map_data) if self.is_mutable_run else map_data
+
     def test_recursive_const_map(self) -> None:
         self.assertEqual(self.LocationMap[1][1], 1)
 
@@ -144,7 +162,10 @@ class MapTests(unittest.TestCase):
         self.assertNotIn(x, x)
 
     def test_contains_enum(self) -> None:
-        cmap = self.Maps(colorMap={c: c for c in [self.Color.red, self.Color.blue]})
+        cmap = self.Maps(
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            colorMap=self.to_map({c: c for c in [self.Color.red, self.Color.blue]})
+        )
         self.assertIn(self.Color.red, cmap.colorMap)
         self.assertIn(self.Color.blue, cmap.colorMap)
         self.assertNotIn(self.Color.green, cmap.colorMap)
@@ -160,10 +181,16 @@ class MapTests(unittest.TestCase):
         self.StrIntMap()
         self.StrIntMap({})
         self.StrStrIntListMapMap({})
-        self.StrStrIntListMapMap({"foo": {}})
-        self.StrStrIntListMapMap({"foo": {"bar": []}})
+        # pyre-ignore[6]: Fixme: type error to be addressed later
+        self.StrStrIntListMapMap({"foo": self.to_map({})})
+        # pyre-ignore[6]: Fixme: type error to be addressed later
+        self.StrStrIntListMapMap({"foo": self.to_map({"bar": []})})
 
     def test_mixed_construction(self) -> None:
+        if self.is_mutable_run:
+            # TODO: remove after implementing `to_thrift_map()`
+            return
+
         s = self.StrI32ListMap({"bar": [0, 1]})
         x = self.StrStrIntListMapMap({"foo": s})
         px = {}
@@ -200,24 +227,37 @@ class MapTests(unittest.TestCase):
         b = self.StrEasyMap({"a": self.easy(val=0)})
         a = self.StrEasyMap({"a": self.easy()})
         c = self.StrEasyMap({"a": self.easy(val=1)})
-        d = self.StrEasyMap({"a": self.easy(val_list=[])})
+        # pyre-ignore[6]: TODO: Thrift-Container init
+        d = self.StrEasyMap({"a": self.easy(val_list=self.to_list([]))})
         self.assertEqual(a, b)
         self.assertEqual(a, d)
         self.assertNotEqual(a, c)
 
     def test_struct_with_map_fields(self) -> None:
         s = self.Maps(
-            boolMap={True: True, False: False},
-            byteMap={1: 1, 2: 2, 3: 3},
-            i16Map={4: 4, 5: 5, 6: 6},
-            i64Map={7: 7, 8: 8, 9: 9},
-            doubleMap={1.23: 1.23, 4.56: 4.56},
-            floatMap={7.89: 7.89, 10.11: 10.11},
-            stringMap={"foo": "foo", "bar": "bar"},
-            binaryMap={b"foo": b"foo", b"bar": b"bar"},
-            iobufMap={IOBuf(b"foo"): IOBuf(b"foo"), IOBuf(b"bar"): IOBuf(b"bar")},
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            boolMap=self.to_map({True: True, False: False}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            byteMap=self.to_map({1: 1, 2: 2, 3: 3}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            i16Map=self.to_map({4: 4, 5: 5, 6: 6}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            i64Map=self.to_map({7: 7, 8: 8, 9: 9}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            doubleMap=self.to_map({1.23: 1.23, 4.56: 4.56}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            floatMap=self.to_map({7.89: 7.89, 10.11: 10.11}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            stringMap=self.to_map({"foo": "foo", "bar": "bar"}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            binaryMap=self.to_map({b"foo": b"foo", b"bar": b"bar"}),
+            # pyre-ignore[6]: TODO: Thrift-Container init
+            iobufMap=self.to_map(
+                {IOBuf(b"foo"): IOBuf(b"foo"), IOBuf(b"bar"): IOBuf(b"bar")}
+            ),
+            # pyre-ignore[6]: TODO: Thrift-Container init
             structMap=(
-                {}
+                to_thrift_map({})
                 if self.is_mutable_run
                 else {
                     self.Foo(value=1): self.Foo(value=1),

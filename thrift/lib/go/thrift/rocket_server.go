@@ -19,9 +19,7 @@ package thrift
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
-	"os"
 
 	rsocket "github.com/rsocket/rsocket-go"
 	"github.com/rsocket/rsocket-go/core/transport"
@@ -34,35 +32,35 @@ type rocketServer struct {
 	listener      net.Listener
 	transportID   TransportID
 	zstdSupported bool
-	log           *log.Logger
+	log           func(format string, args ...interface{})
 	connContext   ConnContextFunc
 }
 
-func newRocketServer(proc Processor, listener net.Listener, options *ServerOptions) Server {
+func newRocketServer(proc Processor, listener net.Listener, options *serverOptions) Server {
 	return &rocketServer{
 		proc:          proc,
 		listener:      listener,
 		transportID:   TransportIDRocket,
 		zstdSupported: true,
-		log:           log.New(os.Stderr, "", log.LstdFlags),
+		log:           options.log,
 		connContext:   options.connContext,
 	}
 }
 
-func newUpgradeToRocketServer(proc Processor, listener net.Listener, options *ServerOptions) Server {
+func newUpgradeToRocketServer(proc Processor, listener net.Listener, options *serverOptions) Server {
 	return &rocketServer{
 		proc:          proc,
 		listener:      listener,
 		transportID:   TransportIDUpgradeToRocket,
 		zstdSupported: true,
-		log:           log.New(os.Stderr, "", log.LstdFlags),
+		log:           options.log,
 		connContext:   options.connContext,
 	}
 }
 
 func (s *rocketServer) ServeContext(ctx context.Context) error {
 	transporter := func(context.Context) (transport.ServerTransport, error) {
-		return newRocketServerTransport(s.listener, s.connContext, s.proc, s.transportID), nil
+		return newRocketServerTransport(s.listener, s.connContext, s.proc, s.transportID, s.log), nil
 	}
 	r := rsocket.Receive().Acceptor(s.acceptor).Transport(transporter)
 	return r.Serve(ctx)
@@ -79,6 +77,7 @@ func (s *rocketServer) acceptor(ctx context.Context, setup payload.SetupPayload,
 	sendingSocket.MetadataPush(serverMetadataPush)
 	conn := newRocketServerSocket(ctx, s.proc, s.log)
 	return rsocket.NewAbstractSocket(
+		rsocket.MetadataPush(conn.metadataPush),
 		rsocket.RequestResponse(conn.requestResonse),
 		rsocket.FireAndForget(conn.fireAndForget),
 	), nil
@@ -87,11 +86,16 @@ func (s *rocketServer) acceptor(ctx context.Context, setup payload.SetupPayload,
 type rocketServerSocket struct {
 	ctx  context.Context
 	proc Processor
-	log  *log.Logger
+	log  func(format string, args ...interface{})
 }
 
-func newRocketServerSocket(ctx context.Context, proc Processor, log *log.Logger) *rocketServerSocket {
+func newRocketServerSocket(ctx context.Context, proc Processor, log func(format string, args ...interface{})) *rocketServerSocket {
 	return &rocketServerSocket{ctx: ctx, proc: proc, log: log}
+}
+
+func (r *rocketServerSocket) metadataPush(msg payload.Payload) {
+	_ = decodeClientMetadataPush(msg)
+	// This is usually something like transportMetadata = map[deciding_accessors:IP=...], but we do not handle it.
 }
 
 func (r *rocketServerSocket) requestResonse(msg payload.Payload) mono.Mono {
@@ -116,16 +120,16 @@ func (r *rocketServerSocket) requestResonse(msg payload.Payload) mono.Mono {
 func (r *rocketServerSocket) fireAndForget(msg payload.Payload) {
 	request, err := decodeRequestPayload(msg)
 	if err != nil {
-		r.log.Printf("rocketServer fireAndForget decode request payload error: %v", err)
+		r.log("rocketServer fireAndForget decode request payload error: %v", err)
 		return
 	}
 	protocol, err := newProtocolBufferFromRequest(request)
 	if err != nil {
-		r.log.Printf("rocketServer fireAndForget error creating protocol: %v", err)
+		r.log("rocketServer fireAndForget error creating protocol: %v", err)
 		return
 	}
 	if err := process(r.ctx, r.proc, protocol); err != nil {
-		r.log.Printf("rocketServer fireAndForget process error: %v", err)
+		r.log("rocketServer fireAndForget process error: %v", err)
 		return
 	}
 }

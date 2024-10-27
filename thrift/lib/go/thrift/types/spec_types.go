@@ -24,14 +24,21 @@ type FieldSpec struct {
 	ReflectIndex  int
 	IsOptional    bool
 	ValueTypeSpec *TypeSpec
+	// Whether the field must be set (non-nil) in order to serialize:
+	//  * Struct type fields must be set (to avoid nil pointer dereference)
+	//  * Fields inside a union must be set (that's the point of a union)
+	//  * Optional fields must be set ("unset" optional fields must not be
+	//  serailized as per Thrift-spec)
+	MustBeSetToSerialize bool
 }
 
 // StructSpec is a spec for a stuct.
 type StructSpec struct {
-	Name           string
-	IsUnion        bool
-	IsException    bool
-	FieldSpecsByID map[int16]*FieldSpec
+	Name               string
+	IsUnion            bool
+	IsException        bool
+	FieldSpecs         []*FieldSpec
+	FieldSpecIDToIndex map[int16]int
 }
 
 // CodecPrimitiveType is an enum for all primitive types used by codec.
@@ -79,7 +86,9 @@ type CodecMapSpec struct {
 }
 
 // CodecStructSpec is a spec for a struct type.
-type CodecStructSpec struct{}
+type CodecStructSpec struct {
+	NewFunc func() Struct
+}
 
 // CodecTypedefSpec is a spec for a typedef type.
 type CodecTypedefSpec struct {
